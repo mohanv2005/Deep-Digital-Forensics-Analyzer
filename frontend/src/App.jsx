@@ -6,6 +6,14 @@ function App() {
   const [status, setStatus] = useState('Ready')
   const [runId, setRunId] = useState(null)
   const [riskData, setRiskData] = useState(null)
+  const [currentStage, setCurrentStage] = useState('')
+  const [logs, setLogs] = useState([])
+  const [stageStatuses, setStageStatuses] = useState({
+    COLLECTOR: 'Waiting',
+    CONSTRUCTOR: 'Waiting',
+    CORRELATION: 'Waiting',
+    RISK: 'Waiting'
+  })
 
   const actionableRisks = riskData
     ? riskData.filter((risk) => risk.score >= 20)
@@ -51,46 +59,106 @@ function App() {
     }
   }
 
-  async function startAnalysis() {
-    setStatus('Starting...')
-    setRiskData(null)
 
-    try {
-      const response = await fetch(
-        'http://localhost:8000/api/runs',
-        {
-          method: 'POST'
-        }
-      )
+async function startAnalysis() {
+  setStatus('Starting...')
+  setRiskData(null)
+  setRunId(null)
+  setCurrentStage('')
+  setLogs([])
+  setStageStatuses({
+    COLLECTOR: 'Waiting',
+    CONSTRUCTOR: 'Waiting',
+    CORRELATION: 'Waiting',
+    RISK: 'Waiting'
+  })
 
-      const data = await response.json()
+  try {
+    const response = await fetch('http://localhost:8000/api/runs', {
+      method: 'POST'
+    })
 
-      const socket = new WebSocket(
-        `ws://localhost:8000${data.websocket}`
-      )
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.detail || 'Failed to start analysis')
+    }
 
-      socket.onmessage = (event) => {
-        const message = JSON.parse(event.data)
+    const data = await response.json()
 
-        console.log('WebSocket message:', message)
+    setRunId(data.runId)
+    setStatus('Running')
 
-        if (message.type === 'complete') {
-          if (message.status === 'success') {
-            setStatus('Analysis complete')
-            loadRiskData()
-          } else {
-            setStatus('Analysis failed')
-          }
-        }
+    const socket = new WebSocket(
+      `ws://localhost:8000${data.websocket}`
+    )
+
+    socket.onopen = () => {
+      console.log('WebSocket connected')
+    }
+
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+
+      console.log('Backend message:', message)
+
+      if (message.type === 'stage') {
+        setCurrentStage(message.stage)
+
+        setStageStatuses((previous) => ({
+          ...previous,
+          [message.stage]: message.status
+        }))
       }
 
-      setRunId(data.runId)
-      setStatus(data.status)
-    } catch (error) {
-      console.error(error)
-      setStatus('Failed to start analysis')
+      if (message.type === 'log') {
+        setLogs((previous) => [
+          ...previous,
+          {
+            stage: message.stage,
+            message: message.message,
+            timestamp: message.timestamp
+          }
+        ])
+      }
+
+      if (message.type === 'complete') {
+        if (message.status === 'success') {
+          setStatus('Analysis complete')
+          setCurrentStage('Completed')
+          loadRiskData()
+        } else {
+          setStatus('Analysis failed')
+        }
+
+        socket.close()
+      }
+
+      if (message.type === 'error') {
+        setStatus('Analysis failed')
+
+        setLogs((previous) => [
+          ...previous,
+          {
+            stage: 'ERROR',
+            message: message.message,
+            timestamp: new Date().toISOString()
+          }
+        ])
+
+        socket.close()
+      }
     }
+
+    socket.onerror = () => {
+      setStatus('WebSocket connection error')
+    }
+
+  } catch (error) {
+    console.error(error)
+    setStatus(error.message || 'Failed to start analysis')
   }
+}
+
 
   return (
   <div className="app">
@@ -127,6 +195,47 @@ function App() {
           Run ID: {runId}
         </p>
       )}
+
+            {runId && (
+        <section className="live-monitor">
+          <h2>Live Analysis Monitor</h2>
+
+          <p>
+            Current Stage: <strong>{currentStage || 'Initializing...'}</strong>
+          </p>
+
+          <div className="pipeline-stages">
+            {['COLLECTOR', 'CONSTRUCTOR', 'CORRELATION', 'RISK'].map((stage) => (
+              <div className="pipeline-stage" key={stage}>
+                <strong>{stage}</strong>
+                <span>{stageStatuses[stage]}</span>
+              </div>
+            ))}
+          </div>
+
+          <h3>Live Backend Logs</h3>
+
+          <div className="log-container">
+            {logs.length === 0 ? (
+              <p>Waiting for backend messages...</p>
+            ) : (
+              logs.map((log, index) => (
+                <div className="log-entry" key={index}>
+                  <span className="log-stage">[{log.stage}]</span>
+                  <span className="log-message">{log.message}</span>
+                  <span className="log-time">
+                    {log.timestamp
+                      ? new Date(log.timestamp).toLocaleTimeString()
+                      : ''}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      )}
+
+
     </header>
 
     {riskData && (
