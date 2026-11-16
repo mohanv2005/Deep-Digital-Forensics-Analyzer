@@ -302,12 +302,12 @@ async function startAnalysis() {
 
       if (friendlyMessage) {
         setLogs((previous) => [
-          ...previous,
           {
             stage: message.stage,
             message: friendlyMessage,
             timestamp: message.timestamp
-          }
+          },
+          ...previous
         ])
       }
     }
@@ -413,7 +413,23 @@ async function startAnalysis() {
               logs.map((log, index) => (
                 <div className="log-entry" key={index}>
                   <span className="log-stage">[{log.stage}]</span>
-                  <span className="log-message">{log.message}</span>
+                  <span
+                    className={`log-message ${
+                      log.message.toLowerCase().includes('suspicious') ||
+                      log.message.toLowerCase().includes('risk finding')
+                        ? 'log-important'
+                        : log.message.toLowerCase().includes('completed')
+                        ? 'log-success'
+                        : log.message.toLowerCase().includes('error') ||
+                          log.message.toLowerCase().includes('failed')
+                        ? 'log-error'
+                        : log.message.toLowerCase().includes('correlation')
+                        ? 'log-correlation'
+                        : ''
+                    }`}
+                  >
+                    {log.message}
+                  </span>
                   <span className="log-time">
                     {log.timestamp
                       ? new Date(log.timestamp).toLocaleTimeString()
