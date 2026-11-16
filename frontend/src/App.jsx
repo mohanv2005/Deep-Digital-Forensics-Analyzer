@@ -2,6 +2,193 @@ import { useState } from 'react'
 import RiskCard from './components/RiskCard'
 import './App.css'
 
+
+function getFriendlyLog(log) {
+  const message = log.message.trim()
+  const stage = log.stage?.toUpperCase()
+
+  const progressMatch = message.match(/(.+?):\s*(\d+)%/)
+
+  if (progressMatch) {
+    const percentage = Number(progressMatch[2])
+
+    if (![0, 50, 100].includes(percentage)) {
+      return null
+    }
+
+    const activity = progressMatch[1].toLowerCase()
+
+    let description = 'Processing investigation data'
+
+    if (activity.includes('extraction')) {
+      description = 'Extracting investigation indicators'
+    } else if (activity.includes('domain')) {
+      description = 'Analyzing website activity'
+    } else if (activity.includes('ip')) {
+      description = 'Analyzing network addresses'
+    } else if (activity.includes('file')) {
+      description = 'Analyzing file activity'
+    } else if (activity.includes('process')) {
+      description = 'Analyzing process activity'
+    } else if (activity.includes('cross-source')) {
+      description = 'Connecting related activities across evidence sources'
+    }
+
+    return `${description} — ${percentage}%`
+  }
+
+  if (stage === 'COLLECTOR') {
+    if (/Reading (System|Application|Security)/i.test(message)) {
+      return null
+    }
+
+    if (/Collecting historical Windows events/i.test(message)) {
+      return null
+    }
+
+    if (/Collecting historical network events/i.test(message)) {
+      return 'Collecting network activity'
+    }
+
+    if (/Collecting historical process creation events/i.test(message)) {
+      return 'Collecting process activity'
+    }
+
+    if (/Collection complete\. Events:\s*(\d+)/i.test(message)) {
+      const count = Number(message.match(/Events:\s*(\d+)/i)[1])
+      return `Collected ${count.toLocaleString()} events`
+    }
+
+    if (/Collecting Windows event logs/i.test(message)) {
+      return 'Collecting Windows event logs'
+    }
+
+    if (/Collecting browser history/i.test(message)) {
+      return 'Collecting browser history'
+    }
+
+    if (/Writing evidence/i.test(message)) {
+      return 'Saving collected evidence'
+    }
+
+    if (/Evidence written successfully/i.test(message)) {
+      return 'Evidence saved successfully'
+    }
+
+    if (/Collection complete/i.test(message)) {
+      return 'Evidence collection completed'
+    }
+
+    if (/^Collected:|^Windows events:|^Browser events:|^Network events:|^Process events:/i.test(message)) {
+      return null
+    }
+
+    if (/^Deep AI Digital Forensics Collector$|^=+$/.test(message)) {
+      return null
+    }
+  }
+
+  if (stage === 'CONSTRUCTOR') {
+    if (/Input:|Output:|Loaded evidence:|Timeline events:/i.test(message)) {
+      if (/Timeline events:/i.test(message)) {
+        return 'Building the investigation timeline'
+      }
+      return null
+    }
+
+    return null
+  }
+
+  if (stage === 'CORRELATION') {
+    if (/Extracting indicators/i.test(message)) {
+      return 'Extracting investigation indicators'
+    }
+
+    if (/Processing domain index/i.test(message)) {
+      return 'Analyzing website activity'
+    }
+
+    if (/Processing IP index/i.test(message)) {
+      return 'Analyzing network addresses'
+    }
+
+    if (/Processing file index/i.test(message)) {
+      return 'Analyzing file activity'
+    }
+
+    if (/Processing process index/i.test(message)) {
+      return 'Analyzing process activity'
+    }
+
+    if (/Building cross-source activity graph/i.test(message)) {
+      return 'Connecting related activities across evidence sources'
+    }
+
+    if (/Cross-source processing domain index/i.test(message)) {
+      return 'Connecting website activity across evidence sources'
+    }
+
+    if (/Cross-source processing IP index/i.test(message)) {
+      return 'Connecting network activity across evidence sources'
+    }
+
+    if (/Cross-source processing file index/i.test(message)) {
+      return 'Connecting file activity across evidence sources'
+    }
+
+    if (/Cross-source processing process index/i.test(message)) {
+      return 'Connecting process activity across evidence sources'
+    }
+
+    if (/Generated (\d+) correlations/i.test(message)) {
+      const count = Number(message.match(/Generated (\d+) correlations/i)[1])
+      return `Found ${count.toLocaleString()} relationships between activities`
+    }
+
+    if (/Loaded \d+ evidence events|Evidence window:|Latest evidence:|Events removed:|Events retained:|Index sizes:|Finished .* index|Indicator extraction complete|Cross-source activities:|Entity correlations:|Cross-source correlations:|Process tree correlations:|Process-network correlations:|File activity correlations:|Suspicious activity chains:|Total correlations:|Output:/i.test(message)) {
+      return null
+    }
+  }
+
+  if (stage === 'RISK') {
+    if (/ProcessRule generated/i.test(message)) {
+      return 'Evaluating process activity'
+    }
+
+    if (/ProcessTreeRule generated/i.test(message)) {
+      return 'Examining related process activity'
+    }
+
+    if (/ExecutionPathRule generated/i.test(message)) {
+      return 'Checking suspicious execution paths'
+    }
+
+    if (/NetworkRule generated/i.test(message)) {
+      return 'Analyzing network activity'
+    }
+
+    if (/Total signals:|Timeline events:|Correlations:|Activities:|Aggregated findings:/i.test(message)) {
+      return null
+    }
+
+    if (/Risk analysis completed/i.test(message)) {
+      return 'Risk analysis completed'
+    }
+
+    if (/Generated (\d+) risk findings/i.test(message)) {
+      const count = Number(message.match(/Generated (\d+) risk findings/i)[1])
+      return `Generated ${count.toLocaleString()} risk findings`
+    }
+
+    if (/Output:/i.test(message)) {
+      return null
+    }
+  }
+
+  return null
+}
+
+
 function App() {
   const [status, setStatus] = useState('Ready')
   const [runId, setRunId] = useState(null)
@@ -111,15 +298,19 @@ async function startAnalysis() {
       }
 
       if (message.type === 'log') {
+      const friendlyMessage = getFriendlyLog(message)
+
+      if (friendlyMessage) {
         setLogs((previous) => [
           ...previous,
           {
             stage: message.stage,
-            message: message.message,
+            message: friendlyMessage,
             timestamp: message.timestamp
           }
         ])
       }
+    }
 
       if (message.type === 'complete') {
         if (message.status === 'success') {
