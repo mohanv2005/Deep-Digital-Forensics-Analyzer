@@ -314,3 +314,148 @@
   color: #c4b5fd;
   font-weight: 600;
 }
+
+
+/* Clickable Event IDs */
+.event-id-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-id-button {
+  background: transparent;
+  border: none;
+  color: #60a5fa;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  padding: 5px 0;
+}
+
+.event-id-button:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+/* Evidence panel */
+.evidence-panel {
+  margin: 10px 0 14px;
+  padding: 16px;
+  background: #171d29;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.evidence-panel h4 {
+  color: #93c5fd;
+  margin: 12px 0;
+}
+
+.evidence-panel h4:first-child {
+  margin-top: 0;
+}
+
+.evidence-metadata,
+.evidence-data {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.evidence-field {
+  display: grid;
+  grid-template-columns: minmax(110px, 25%) minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px;
+  background: #1e293b;
+  border-radius: 5px;
+}
+
+.evidence-label {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.evidence-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.evidence-value-text {
+  color: #e2e8f0;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.evidence-empty {
+  color: #64748b;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.evidence-nested {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.evidence-array {
+  margin: 0;
+  padding-left: 20px;
+  color: #cbd5e1;
+}
+
+.evidence-array li {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+
+.evidence-loading {
+  color: #60a5fa;
+  font-size: 13px;
+  padding: 10px;
+}
+
+.evidence-error {
+  color: #f87171;
+  font-size: 13px;
+  padding: 10px;
+}
+
+.evidence-raw {
+  margin-top: 15px;
+  border-top: 1px solid #334155;
+  padding-top: 12px;
+}
+
+.evidence-raw summary {
+  cursor: pointer;
+  color: #fbbf24;
+  font-size: 13px;
+}
+
+.evidence-raw pre {
+  margin-top: 10px;
+  padding: 12px;
+  background: #0f172a;
+  color: #cbd5e1;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 300px;
+  overflow: auto;
+}
+
+@media (max-width: 600px) {
+  .evidence-field {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+}
